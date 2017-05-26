@@ -595,15 +595,22 @@ puglWaitForEvent(PuglView* view)
 }
 
 static void
-merge_draw_events(PuglEvent* dst, const PuglEvent* src)
+merge_expose_events(PuglEvent* dst, const PuglEvent* src)
 {
 	if (!dst->type) {
 		*dst = *src;
 	} else {
-		dst->expose.x      = MIN(dst->expose.x,      src->expose.x);
-		dst->expose.y      = MIN(dst->expose.y,      src->expose.y);
-		dst->expose.width  = MAX(dst->expose.width,  src->expose.width);
-		dst->expose.height = MAX(dst->expose.height, src->expose.height);
+		// Compute the union of bounding rects
+		int dst_coord[2] = { dst->expose.x + dst->expose.width,
+		                     dst->expose.y + dst->expose.height };
+		int src_coord[2] = { src->expose.x + src->expose.width,
+		                     src->expose.y + src->expose.height };
+		int x = dst->expose.x = MIN(dst->expose.x, src->expose.x);
+		int y = dst->expose.y = MIN(dst->expose.y, src->expose.y);
+		dst->expose.width     = MAX(dst_coord[0], src_coord[0]) - x;
+		dst->expose.height    = MAX(dst_coord[1], src_coord[1]) - y;
+		// Keep the lesser count of two events
+		dst->expose.count     = MIN(dst->expose.count, src->expose.count);
 	}
 }
 
@@ -642,10 +649,10 @@ puglProcessEvents(PuglView* view)
 
 		if (event.type == PUGL_EXPOSE) {
 			// Expand expose event to be dispatched after loop
-			merge_draw_events(&expose_event, &event);
+			merge_expose_events(&expose_event, &event);
 		} else if (event.type == PUGL_CONFIGURE) {
 			// Expand configure event to be dispatched after loop
-			merge_draw_events(&config_event, &event);
+			config_event = event;
 		} else {
 			// Dispatch event to application immediately
 			puglDispatchEvent(view, &event);
