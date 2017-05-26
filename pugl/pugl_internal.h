@@ -229,9 +229,11 @@ puglDispatchEvent(PuglView* view, const PuglEvent* event)
 		puglLeaveContext(view, false);
 		break;
 	case PUGL_EXPOSE:
-		puglEnterContext(view);
-		view->eventFunc(view, event);
-		puglLeaveContext(view, true);
+		if (event->expose.count == 0) {
+			puglEnterContext(view);
+			view->eventFunc(view, event);
+			puglLeaveContext(view, true);
+		}
 		break;
 	default:
 		view->eventFunc(view, event);
